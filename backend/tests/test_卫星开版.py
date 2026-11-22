@@ -7,7 +7,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-临时 = tempfile.mkdtemp(prefix="haoshu-test-")
+临时 = os.path.join(tempfile.gettempdir(), "haoshu-test-shared")
+os.makedirs(临时, exist_ok=True)
 os.environ["数据目录"] = 临时
 
 from app import seed

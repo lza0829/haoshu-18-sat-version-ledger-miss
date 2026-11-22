@@ -3,7 +3,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 from app.db import 夹具目录, 连接
-from app.services import 装载, 贯验, 目录, 卫星开版
+from app.services import 装载, 贯验, 目录, 卫星开版, 站规
 
 路由 = APIRouter(prefix="/api")
 
@@ -89,12 +89,31 @@ def 列卫星(kind: str, 仅当前: int = 1):
 
 
 @路由.get("/站规")
-def 站规():
+def 读站规():
     conn = 连接()
     try:
-        return {r["键"]: r["值"] for r in conn.execute("SELECT 键, 值 FROM 站规")}
+        return {
+            "站规": {r["键"]: r["值"] for r in conn.execute("SELECT 键, 值 FROM 站规")},
+            "现行口径": 站规.现行口径(conn),
+            "版本史": 站规.站规版本史(conn),
+            "架构": "钉死快照",
+        }
     finally:
         conn.close()
+
+
+class 改名单请求(BaseModel):
+    字段名单: list[str]
+    批号: str = ""
+
+
+@路由.post("/站规/字段名单")
+def 改字段名单(体: 改名单请求):
+    """受管改名单入口：校验并追加不可变站规版本；只影响之后新开版。"""
+    try:
+        return 站规.改字段名单(体.字段名单, 批号=体.批号)
+    except 站规.站规错误 as e:
+        raise HTTPException(422, str(e)) from e
 
 
 @路由.get("/隔离匣")
@@ -144,11 +163,21 @@ from app.modules import 字段集世代 as 世
 
 @路由.get("/贯验/字段集世代")
 def 取字段集世代(父哈希: str | None = None):
+    """旧入口保留：已切到真实世代核证只读服务。"""
     conn = 连接()
     try:
         return 世.查世代(conn, 父哈希)
     finally:
         conn.close()
+
+
+@路由.get("/贯验/字段集世代核证")
+def 字段集世代核证(类: str | None = None, 父哈希: str | None = None,
+                   批号: str | None = None):
+    """基线所无的新增只读接口：字段名单世代核证。"""
+    if 类 and 类 not in 卫星开版.表配置:
+        raise HTTPException(404, "未知卫星类")
+    return 卫星开版.世代核证(类=类, 父键=父哈希, 批号=批号)
 
 def _alias_payload(payload: dict) -> dict:
     out = dict(payload or {})

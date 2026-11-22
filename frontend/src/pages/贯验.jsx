@@ -112,12 +112,19 @@ export default function 贯验(){
       {开版 && <>
         <div className="格">
           <div className="卡"><b>{开版.口径?.口径}</b><span>字段集口径</span></div>
-          <div className="卡"><b>{开版.口径?.字段}</b><span>进哈希字段</span></div>
+          <div className="卡"><b className="哈希">{开版.口径?.字段集快照}</b><span>现行进哈希名单</span></div>
           <div className="卡"><b>{组.length}</b><span>父键组</span></div>
           <div className="卡"><b>{问题数}</b><span>问题数</span></div>
           <div className="卡"><b>{开版.写闸?.完整?"齐备":"缺口"}</b><span>写闸</span></div>
+          <div className="卡">
+            <b className={`${开版.世代核证?.通过?"":"败"}`}>{开版.世代核证?.世代数 ?? "—"}</b>
+            <span>钉死世代（分叉 {开版.世代核证?.分叉数 ?? 0}）</span>
+          </div>
         </div>
-        <p className="讯">{开版.口径?.规则}</p>
+        <p className="讯">{开版.架构}：{开版.口径?.规则}</p>
+        {开版.世代核证 && !开版.世代核证.通过 && (
+          <p className="讯 败">世代核证失败：{(开版.世代核证.失败项||[]).join("；")}</p>
+        )}
         {开版.写闸 && !开版.写闸.完整 && (
           <p className="讯 败">写闸缺口：{开版.写闸.缺口.join("、")}</p>
         )}

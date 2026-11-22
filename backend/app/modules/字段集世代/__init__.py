@@ -1,29 +1,34 @@
-状态 = "半截"
+"""字段集世代（已实现）。
+
+贯彻全局唯一架构「钉死快照」：
+- 卫星开版成功必须同成败固化字段名单世代五元组
+  （父哈希、新卫星哈希、字段名单快照、站规版本、批号）；
+- 再灌同载荷的开版/跳过判定采信当前版开版当时的钉死快照，
+  现行站规改名单只影响之后新开版，不回溯、不重算、不覆盖旧哈希结论；
+- 半截失败整票回滚；库层触发器禁止无世代开版、禁止改删钉扎。
+另一可行架构「现行站规重算覆盖」本仓不采纳，禁止两套语义混用。
+"""
+from app.seed import 世代架构
+
+状态 = "已实现"
+架构 = 世代架构
+只读接口 = "/api/贯验/字段集世代核证"
 
 
 def 查世代(conn, 父哈希: str | None = None) -> dict:
-    rows = []
-    try:
-        if 父哈希:
-            rows = [dict(r) for r in conn.execute(
-                "SELECT * FROM 字段集世代 WHERE 父哈希=? ORDER BY 编号 DESC", (父哈希,)
-            )]
-        else:
-            rows = [dict(r) for r in conn.execute(
-                "SELECT * FROM 字段集世代 ORDER BY 编号 DESC LIMIT 50"
-            )]
-    except Exception:
-        rows = []
-    return {"世代": rows, "钉死": False, "采信现行站规": True}
+    """兼容旧入口：转真实世代核证只读服务。"""
+    from app.services import 卫星开版
+
+    return 卫星开版.世代核证(conn, 父键=父哈希)
 
 
-def 现用字段集(conn) -> list:
-    row = conn.execute("SELECT 值 FROM 站规 WHERE 键=?", ("卫星哈希字段集",)).fetchone()
-    if not row:
-        return ["月费", "流量档", "有效期", "展示名", "备注"]
-    import json
-    try:
-        v = json.loads(row["值"])
-        return list(v) if isinstance(v, list) else ["月费", "流量档", "有效期", "展示名", "备注"]
-    except Exception:
-        return ["月费", "流量档", "有效期", "展示名", "备注"]
+def 摘要() -> dict:
+    return {
+        "状态": 状态,
+        "架构": 架构,
+        "规则": (
+            "开版同成败钉死字段名单世代；再灌比对用当时快照；"
+            "现行站规改名单不回溯已开版结论；半截失败整票回滚"
+        ),
+        "只读接口": 只读接口,
+    }
